@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
-const userRoutes = require('./src/routes/userRoutes');
+const sequelize = require('./connection');
+const userRoutes = require('./Server/routes/userRoutes');
 
 const app = express();
 
@@ -9,6 +10,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
+
+// Teste da conexão com o banco de dados
+sequelize.authenticate()
+    .then(() => {
+        console.log('Conexão com o banco de dados estabelecida com sucesso.');
+    })
+    .catch(err => {
+        console.error('Não foi possível conectar ao banco de dados:', err);
+    });
 
 // Rotas
 app.use('/users', userRoutes);
