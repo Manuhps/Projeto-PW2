@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../connection');
 
-const Alojamento = sequelize.define("Alojamento", {
+const Evento = sequelize.define("Evento", {
     id: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -16,7 +16,15 @@ const Alojamento = sequelize.define("Alojamento", {
         type: DataTypes.TEXT,
         allowNull: false
     },
-    endereco: {
+    data_inicio: {
+        type: DataTypes.DATE,
+        allowNull: false
+    },
+    data_fim: {
+        type: DataTypes.DATE,
+        allowNull: false
+    },
+    local: {
         type: DataTypes.STRING,
         allowNull: false
     },
@@ -34,21 +42,24 @@ const Alojamento = sequelize.define("Alojamento", {
             min: 0
         }
     },
-    disponivel: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: true
+    organizador_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'Users',
+            key: 'id'
+        }
     },
-    imagens: {
-        type: DataTypes.JSON,
-        defaultValue: []
+    status: {
+        type: DataTypes.ENUM('agendado', 'em_andamento', 'concluido', 'cancelado'),
+        defaultValue: 'agendado'
     },
-    comodidades: {
-        type: DataTypes.JSON,
-        defaultValue: []
-    },
-    regras: {
-        type: DataTypes.TEXT,
-        allowNull: true
+    imagem: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        validate: {
+            isUrl: true
+        }
     }
 }, {
     timestamps: true,
@@ -56,4 +67,4 @@ const Alojamento = sequelize.define("Alojamento", {
     updatedAt: 'updated_at'
 });
 
-module.exports = Alojamento; 
+module.exports = Evento; 

@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const sequelize = require('./connection');
-const userRoutes = require('./Server/routes/userRoutes');
+const routes = require('./Server/routes');
 
 const app = express();
 
@@ -15,13 +15,23 @@ app.use(morgan('dev'));
 sequelize.authenticate()
     .then(() => {
         console.log('Conexão com o banco de dados estabelecida com sucesso.');
+        // Sincroniza os modelos com a base de dados
+        return sequelize.sync({ alter: true });
+    })
+    .then(() => {
+        console.log('Modelos sincronizados com sucesso.');
     })
     .catch(err => {
-        console.error('Não foi possível conectar ao banco de dados:', err);
+        console.error('Erro:', err);
     });
 
 // Rotas
-app.use('/users', userRoutes);
+app.use('/api', routes);
+
+// Rota padrão
+app.get('/', (req, res) => {
+    res.json({ message: 'Bem-vindo à API de Integração de Estudantes!' });
+});
 
 // Rota padrão para 404
 app.use((req, res) => {
