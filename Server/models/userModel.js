@@ -33,8 +33,14 @@ const User = sequelize.define("User", {
         }
     },
     tipo: {
-        type: DataTypes.ENUM('admin', 'proprietario', 'organizador', 'user'),
-        defaultValue: 'user'
+        type: DataTypes.ENUM('proprietario', 'organizador', 'user'),
+        defaultValue: 'user',
+        allowNull: false
+    },
+    isAdmin: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false,
+        allowNull: false
     },
     isBanned: {
         type: DataTypes.BOOLEAN,
@@ -54,7 +60,17 @@ const User = sequelize.define("User", {
 }, {
     timestamps: true,
     createdAt: 'created_at',
-    updatedAt: 'updated_at'
+    updatedAt: 'updated_at',
+    hooks: {
+        beforeUpdate: async (user) => {
+            // Verifica se está tentando alterar o status de admin
+            if (user.changed('isAdmin')) {
+                // Aqui você pode adicionar uma lógica para verificar se o usuário que está fazendo a alteração é admin
+                // Isso deve ser implementado no controller
+                throw new Error('Apenas administradores podem alterar o status de admin de um usuário');
+            }
+        }
+    }
 });
 
 module.exports = User; 

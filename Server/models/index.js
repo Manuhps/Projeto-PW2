@@ -6,11 +6,11 @@ const Inscricao = require('./inscricaoModel');
 
 // Associações User - Evento (Organizador)
 User.hasMany(Evento, { foreignKey: 'organizador_id', as: 'eventosOrganizados' });
-Evento.belongsTo(User, { foreignKey: 'organizador_id', as: 'organizador' });~
+Evento.belongsTo(User, { foreignKey: 'organizador_id', as: 'organizador' });
 
-// Associações User - Evento (Organizador)
-User.hasMany(Evento, { foreignKey: 'proprietario_id', as: 'propriedades' });
-Evento.belongsTo(User, { foreignKey: 'proprietario_id', as: 'proprietario' });
+// Associações User - Alojamento (Proprietário)
+User.hasMany(Alojamento, { foreignKey: 'proprietario_id', as: 'propriedades' });
+Alojamento.belongsTo(User, { foreignKey: 'proprietario_id', as: 'proprietario' });
 
 // Associações User - Reserva
 User.hasMany(Reserva, { foreignKey: 'user_id', as: 'reservas' });
