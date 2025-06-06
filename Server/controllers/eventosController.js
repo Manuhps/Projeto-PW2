@@ -1,6 +1,4 @@
-const Evento = require('../models/eventoModel');
-const User = require('../models/userModel');
-const Inscricao = require('../models/inscricaoModel');
+const { Evento, User, Inscricao } = require('../models');
 
 const eventosController = {
     // Criar um novo evento
@@ -9,26 +7,9 @@ const eventosController = {
             const { nome, descricao, data_inicio, data_fim, local, capacidade, preco, imagem } = req.body;
             const organizador_id = req.user.id;
 
-            // Verifica se o usuário é um organizador
-            const user = await User.findByPk(organizador_id);
-            if (!user || user.tipo !== 'organizador') {
-                return res.status(403).json({ 
-                    message: "Apenas organizadores podem criar eventos" 
-                });
-            }
-
-            // Validações básicas
+            // Validações simples
             if (!nome || !descricao || !data_inicio || !data_fim || !local || !capacidade || !preco) {
-                return res.status(400).json({ 
-                    message: "Todos os campos obrigatórios devem ser preenchidos" 
-                });
-            }
-
-            // Validação de datas
-            if (new Date(data_inicio) >= new Date(data_fim)) {
-                return res.status(400).json({ 
-                    message: "A data de início deve ser anterior à data de fim" 
-                });
+                return res.status(400).json({ mensagem: "Todos os campos são obrigatórios" });
             }
 
             const evento = await Evento.create({
@@ -43,59 +24,45 @@ const eventosController = {
                 imagem
             });
 
-            return res.status(201).json({
-                message: "Evento criado com sucesso",
-                evento
-            });
-
+            res.status(201).json(evento);
         } catch (error) {
-            console.error(error);
-            return res.status(500).json({ 
-                message: "Erro ao criar evento" 
-            });
+            console.error('Erro ao criar evento:', error);
+            res.status(500).json({ mensagem: "Erro ao criar evento" });
         }
     },
 
     // Listar todos os eventos
     getAllEventos: async (req, res) => {
         try {
-            const { status, limit = 10, page = 0 } = req.query;
-            
-            const where = {};
-            if (status) where.status = status;
+            const { page = 1, limit = 10 } = req.query;
+            const offset = (page - 1) * limit;
 
             const eventos = await Evento.findAndCountAll({
-                where,
-                limit: parseInt(limit),
-                offset: parseInt(page) * parseInt(limit),
                 include: [{
                     model: User,
                     as: 'organizador',
                     attributes: ['id', 'username', 'email']
-                }]
+                }],
+                limit: +limit,
+                offset: +offset
             });
 
-            return res.status(200).json({
+            res.status(200).json({
                 total: eventos.count,
                 totalPages: Math.ceil(eventos.count / limit),
-                currentPage: parseInt(page),
-                eventos: eventos.rows
+                currentPage: +page,
+                data: eventos.rows
             });
-
         } catch (error) {
-            console.error(error);
-            return res.status(500).json({ 
-                message: "Erro ao listar eventos" 
-            });
+            console.error('Erro ao listar eventos:', error);
+            res.status(500).json({ mensagem: "Erro ao listar eventos" });
         }
     },
 
     // Obter um evento específico
     getEventoById: async (req, res) => {
         try {
-            const { id } = req.params;
-
-            const evento = await Evento.findByPk(id, {
+            const evento = await Evento.findByPk(req.params.id, {
                 include: [{
                     model: User,
                     as: 'organizador',
@@ -104,90 +71,55 @@ const eventosController = {
             });
 
             if (!evento) {
-                return res.status(404).json({ 
-                    message: "Evento não encontrado" 
-                });
+                return res.status(404).json({ mensagem: "Evento não encontrado" });
             }
 
-            return res.status(200).json(evento);
-
+            res.status(200).json(evento);
         } catch (error) {
-            console.error(error);
-            return res.status(500).json({ 
-                message: "Erro ao buscar evento" 
-            });
+            console.error('Erro ao obter evento:', error);
+            res.status(500).json({ mensagem: "Erro ao obter evento" });
         }
     },
 
     // Atualizar um evento
     updateEvento: async (req, res) => {
         try {
-            const { id } = req.params;
-            const userId = req.user.id;
-            const updateData = req.body;
-
-            const evento = await Evento.findByPk(id);
+            const evento = await Evento.findByPk(req.params.id);
             
             if (!evento) {
-                return res.status(404).json({ 
-                    message: "Evento não encontrado" 
-                });
+                return res.status(404).json({ mensagem: "Evento não encontrado" });
             }
 
-            // Verifica se o usuário é o organizador do evento
-            if (evento.organizador_id !== userId) {
-                return res.status(403).json({ 
-                    message: "Apenas o organizador pode atualizar este evento" 
-                });
+            if (evento.organizador_id !== req.user.id) {
+                return res.status(403).json({ mensagem: "Não autorizado" });
             }
 
-            await evento.update(updateData);
-
-            return res.status(200).json({
-                message: "Evento atualizado com sucesso",
-                evento
-            });
-
+            await evento.update(req.body);
+            res.status(200).json(evento);
         } catch (error) {
-            console.error(error);
-            return res.status(500).json({ 
-                message: "Erro ao atualizar evento" 
-            });
+            console.error('Erro ao atualizar evento:', error);
+            res.status(500).json({ mensagem: "Erro ao atualizar evento" });
         }
     },
 
-    // Deletar um evento
+    // Excluir um evento
     deleteEvento: async (req, res) => {
         try {
-            const { id } = req.params;
-            const userId = req.user.id;
-
-            const evento = await Evento.findByPk(id);
+            const evento = await Evento.findByPk(req.params.id);
             
             if (!evento) {
-                return res.status(404).json({ 
-                    message: "Evento não encontrado" 
-                });
+                return res.status(404).json({ mensagem: "Evento não encontrado" });
             }
 
-            // Verifica se o usuário é o organizador do evento
-            if (evento.organizador_id !== userId) {
-                return res.status(403).json({ 
-                    message: "Apenas o organizador pode deletar este evento" 
-                });
+            if (evento.organizador_id !== req.user.id) {
+                return res.status(403).json({ mensagem: "Não autorizado" });
             }
 
             await evento.destroy();
-
-            return res.status(200).json({
-                message: "Evento deletado com sucesso"
-            });
-
+            res.status(200).json({ mensagem: "Evento excluído com sucesso" });
         } catch (error) {
-            console.error(error);
-            return res.status(500).json({ 
-                message: "Erro ao deletar evento" 
-            });
+            console.error('Erro ao excluir evento:', error);
+            res.status(500).json({ mensagem: "Erro ao excluir evento" });
         }
     },
 
@@ -200,15 +132,13 @@ const eventosController = {
             const evento = await Evento.findByPk(id);
             
             if (!evento) {
-                return res.status(404).json({ 
-                    message: "Evento não encontrado" 
-                });
+                return res.status(404).json({ mensagem: 'Evento não encontrado' });
             }
 
             // Verifica se o evento está disponível para inscrições
             if (evento.status !== 'agendado') {
                 return res.status(400).json({ 
-                    message: "Este evento não está aceitando inscrições" 
+                    errorMessage: "Este evento não está a aceitar inscrições." 
                 });
             }
 
@@ -222,7 +152,7 @@ const eventosController = {
 
             if (inscricaoExistente) {
                 return res.status(400).json({ 
-                    message: "Você já está inscrito neste evento" 
+                    errorMessage: "Já se encontra inscrito neste evento." 
                 });
             }
 
@@ -234,14 +164,95 @@ const eventosController = {
             });
 
             return res.status(201).json({
-                message: "Inscrição realizada com sucesso",
+                message: "Inscrição efetuada com sucesso.",
                 inscricao
             });
 
         } catch (error) {
             console.error(error);
             return res.status(500).json({ 
-                message: "Erro ao realizar inscrição" 
+                errorMessage: "Ocorreu um erro. Por favor, tente novamente mais tarde." 
+            });
+        }
+    },
+
+    // Listar inscritos em um evento (para organizadores)
+    getInscritos: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const userId = req.user.id;
+
+            // Verifica se o user é o organizador do evento
+            const evento = await Evento.findByPk(id);
+            if (!evento) {
+                return res.status(404).json({ mensagem: 'Evento não encontrado' });
+            }
+            if (evento.organizador_id !== userId) {
+                return res.status(403).json({ mensagem: 'Apenas o organizador do evento pode ver as inscrições' });
+            }
+
+            const inscricoes = await Inscricao.findAll({
+                where: { evento_id: id },
+                include: [{
+                    model: User,
+                    as: 'user',
+                    attributes: ['id', 'username', 'email']
+                }]
+            });
+
+            return res.status(200).json(inscricoes);
+
+        } catch (error) {
+            console.error('Erro ao listar inscritos:', error);
+            res.status(500).json({ 
+                mensagem: 'Erro ao listar inscritos',
+                erro: error.message 
+            });
+        }
+    },
+
+    // Atualizar status de inscrição (para organizadores)
+    atualizarStatusInscricao: async (req, res) => {
+        try {
+            const { id, inscricaoId } = req.params;
+            const userId = req.user.id;
+            const { status } = req.body;
+
+            // Verifica se o user é o organizador do evento associado à inscrição
+            const inscricao = await Inscricao.findByPk(inscricaoId, {
+                include: [{
+                    model: Evento,
+                    as: 'evento'
+                }]
+            });
+
+            if (!inscricao) {
+                return res.status(404).json({ mensagem: 'Inscrição não encontrada' });
+            }
+
+            if (inscricao.evento.organizador_id !== userId) {
+                return res.status(403).json({ mensagem: 'Apenas o organizador do evento pode atualizar o estado da inscrição' });
+            }
+
+            // Validações de status (ex: 'pendente', 'confirmada', 'cancelada')
+            if (!['pendente', 'confirmada', 'cancelada'].includes(status)) {
+                 return res.status(400).json({ 
+                    errorMessage: "Estado da inscrição inválido." 
+                });
+            }
+
+            await inscricao.update({ status });
+
+            return res.status(200).json({
+                message: "Estado da inscrição atualizado com sucesso.",
+                inscricao
+            });
+
+        } catch (error) {
+            console.error('Erro ao atualizar status da inscrição:', error);
+            res.status(500).json({ 
+                mensagem: 'Erro ao atualizar status da inscrição',
+                erro: error.message 
             });
         }
     }

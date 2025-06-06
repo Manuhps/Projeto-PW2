@@ -1,20 +1,16 @@
+const bcrypt = require('bcryptjs');
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../connection');
-const bcrypt = require('bcryptjs');
 
 const User = sequelize.define("User", {
     id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
         primaryKey: true,
         autoIncrement: true
     },
     username: {
         type: DataTypes.STRING,
-        allowNull: false,
-        validate: {
-            len: [2, 30]
-        }
+        allowNull: false
     },
     email: {
         type: DataTypes.STRING,
@@ -26,21 +22,15 @@ const User = sequelize.define("User", {
     },
     password: {
         type: DataTypes.STRING,
-        allowNull: false,
-        set(value) {
-            const hashedPassword = bcrypt.hashSync(value, 10);
-            this.setDataValue('password', hashedPassword);
-        }
+        allowNull: false
     },
     tipo: {
-        type: DataTypes.ENUM('proprietario', 'organizador', 'user'),
-        defaultValue: 'user',
-        allowNull: false
+        type: DataTypes.ENUM('proprietario', 'organizador', 'estudante', 'admin'),
+        defaultValue: 'estudante'
     },
     isAdmin: {
         type: DataTypes.BOOLEAN,
-        defaultValue: false,
-        allowNull: false
+        defaultValue: false
     },
     isBanned: {
         type: DataTypes.BOOLEAN,
@@ -52,25 +42,31 @@ const User = sequelize.define("User", {
     },
     profileImg: {
         type: DataTypes.STRING,
-        allowNull: true,
-        validate: {
-            isUrl: true
-        }
+        allowNull: true
     }
 }, {
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
     hooks: {
+        beforeCreate: async (user) => {
+            if (user.password) {
+                const salt = await bcrypt.genSalt(10);
+                user.password = await bcrypt.hash(user.password, salt);
+            }
+        },
         beforeUpdate: async (user) => {
-            // Verifica se está tentando alterar o status de admin
-            if (user.changed('isAdmin')) {
-                // Aqui você pode adicionar uma lógica para verificar se o usuário que está fazendo a alteração é admin
-                // Isso deve ser implementado no controller
-                throw new Error('Apenas administradores podem alterar o status de admin de um usuário');
+            if (user.changed('password')) {
+                const salt = await bcrypt.genSalt(10);
+                user.password = await bcrypt.hash(user.password, salt);
             }
         }
     }
 });
+
+// Método para verificar senha
+User.prototype.checkPassword = async function(password) {
+    return await bcrypt.compare(password, this.password);
+};
 
 module.exports = User; 

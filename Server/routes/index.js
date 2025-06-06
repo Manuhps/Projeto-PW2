@@ -8,10 +8,10 @@ const reservaRoutes = require('./reservaRoutes');
 const inscricaoRoutes = require('./inscricaoRoutes');
 
 // Rotas da API
-router.use('/api/users', userRoutes);
-router.use('/api/alojamentos', alojamentoRoutes);
-router.use('/api/eventos', eventoRoutes);
-router.use('/api/reservas', reservaRoutes);
-router.use('/api/inscricoes', inscricaoRoutes);
+router.use('/users', userRoutes);
+router.use('/alojamentos', alojamentoRoutes);
+router.use('/eventos', eventoRoutes);
+router.use('/reservas', reservaRoutes);
+router.use('/inscricoes', inscricaoRoutes);
 
 module.exports = router; 

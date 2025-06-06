@@ -1,5 +1,5 @@
-const User = require('../models/userModel');
-const bcrypt = require('bcryptjs');
+const { User } = require('../models');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const userController = {
@@ -8,59 +8,118 @@ const userController = {
             const { email, password } = req.body;
 
             if (!email || !password) {
-                return res.status(400).json({ message: "Please fill all the required fields." });
+                return res.status(400).json({ 
+                    errorMessage: "Por favor, forneça email e password." 
+                });
             }
 
-            const user = await User.findByEmail(email);
+            const user = await User.findOne({ where: { email } });
             
             if (!user) {
-                return res.status(404).json({ message: "The user with the provided credentials was not found." });
+                return res.status(401).json({ 
+                    errorMessage: "Credenciais inválidas." 
+                });
             }
 
-            if (user.isBanned) {
-                return res.status(403).json({ errorMessage: "You are currently banned. You can not access this feature…" });
+            if (user.banido) {
+                return res.status(403).json({ 
+                    errorMessage: "Esta conta foi banida. Contacte o administrador para mais informações." 
+                });
             }
 
-            const passwordIsValid = await User.verifyPassword(password, user.password);
+            const validPassword = await bcrypt.compare(password, user.password);
             
-            if (!passwordIsValid) {
-                return res.status(401).json({ errorMessage: "Invalid credentials" });
+            if (!validPassword) {
+                return res.status(401).json({ 
+                    errorMessage: "Credenciais inválidas." 
+                });
             }
 
-            const token = User.generateToken(user);
-            return res.status(200).json({ accessToken: token });
+            const token = jwt.sign(
+                { id: user.id, tipo: user.tipo },
+                process.env.JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+
+            const userWithoutPassword = {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                tipo: user.tipo
+            };
+
+            return res.status(200).json({
+                message: "Login efetuado com sucesso.",
+                token,
+                user: userWithoutPassword
+            });
 
         } catch (error) {
             console.error(error);
-            return res.status(500).json({ errorMessage: "Something went wrong. Please try again later" });
+            return res.status(500).json({ 
+                errorMessage: "Ocorreu um erro. Por favor, tente novamente mais tarde." 
+            });
         }
     },
 
     register: async (req, res) => {
         try {
-            const { username, email, password, tipo = 'user', address, profileImg } = req.body;
+            console.log('Conteúdo de req.body:', req.body);
+            const { username, email, password, tipo } = req.body;
 
-            if (!username || !email || !password) {
-                return res.status(400).json({ message: "Please fill all the required fields." });
+            if (!username || !email || !password || !tipo) {
+                return res.status(400).json({ 
+                    errorMessage: "Por favor, preencha todos os campos obrigatórios." 
+                });
             }
 
-            const existingUser = await User.findByEmail(email);
+            const existingUser = await User.findOne({ where: { email } });
             if (existingUser) {
-                return res.status(409).json({ message: "User already exists" });
+                return res.status(400).json({ 
+                    errorMessage: "Este email já está registado." 
+                });
             }
 
-            const userId = await User.create({ username, email, password, tipo, address, profileImg });
-            const user = await User.findById(userId);
-            const token = User.generateToken(user);
+            const existingUsername = await User.findOne({ where: { username } });
+            if (existingUsername) {
+                return res.status(400).json({ 
+                    errorMessage: "Este nome de utilizador já está em uso." 
+                });
+            }
 
-            return res.status(201).json({ 
-                message: "Registered Successfully", 
-                accessToken: token 
+            const tiposValidos = ['estudante', 'proprietario', 'organizador', 'admin'];
+            if (!tiposValidos.includes(tipo)) {
+                return res.status(400).json({ 
+                    errorMessage: "Tipo de utilizador inválido. Os tipos permitidos são: estudante, proprietario, organizador, admin." 
+                });
+            }
+
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            const user = await User.create({
+                username,
+                email,
+                password: hashedPassword,
+                tipo
+            });
+
+            const userWithoutPassword = {
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                tipo: user.tipo
+            };
+
+            return res.status(201).json({
+                message: "Utilizador registado com sucesso.",
+                user: userWithoutPassword
             });
 
         } catch (error) {
             console.error(error);
-            return res.status(500).json({ message: "Something went wrong. Please try again later" });
+            return res.status(500).json({ 
+                errorMessage: "Ocorreu um erro. Por favor, tente novamente mais tarde." 
+            });
         }
     },
 
@@ -69,7 +128,7 @@ const userController = {
             const user = await User.findById(req.user.id);
             
             if (!user) {
-                return res.status(404).json({ message: "User Not Found" });
+                return res.status(404).json({ errorMessage: "User Not Found." });
             }
 
             const links = [
@@ -79,18 +138,20 @@ const userController = {
 
             return res.status(200).json({
                 user: {
+                    id: user.id,
                     username: user.username,
                     email: user.email,
                     address: user.address,
                     profileImg: user.profileImg,
-                    tipo: user.tipo
+                    tipo: user.tipo,
+                    isBanned: user.isBanned
                 },
                 links
             });
 
         } catch (error) {
             console.error(error);
-            return res.status(500).json({ message: "Something went wrong. Please try again later" });
+            return res.status(500).json({ errorMessage: "Something went wrong. Please try again later." });
         }
     },
 
@@ -100,15 +161,15 @@ const userController = {
             const userId = req.user.id;
 
             if (!username && !email && !password && !address && !profileImg) {
-                return res.status(400).json({ message: "Please insert valid values" });
+                return res.status(400).json({ errorMessage: "Please provide valid values to update." });
             }
 
             await User.update(userId, { username, email, password, address, profileImg });
-            return res.status(200).json({ message: "Data successfully updated" });
+            return res.status(200).json({ message: "Dados atualizados com sucesso." });
 
         } catch (error) {
             console.error(error);
-            return res.status(500).json({ message: "Something went wrong. Please try again later" });
+            return res.status(500).json({ errorMessage: "Something went wrong. Please try again later." });
         }
     },
 
@@ -131,6 +192,10 @@ const userController = {
             const users = await User.getAll(parseInt(limit), parseInt(page), filters);
             const totalUsers = await User.count(filters);
 
+            if (totalUsers === 0) {
+                 return res.status(404).json({ errorMessage: "No users found matching the criteria" });
+            }
+
             const links = [
                 { rel: "login", href: "/users/login", method: "POST" },
                 { rel: "register", href: "/users", method: "POST" },
@@ -151,7 +216,7 @@ const userController = {
 
         } catch (error) {
             console.error(error);
-            return res.status(500).json({ message: "Something went wrong. Please try again later" });
+            return res.status(500).json({ errorMessage: "Something went wrong. Please try again later." });
         }
     },
 
@@ -160,17 +225,27 @@ const userController = {
             const { userID } = req.params;
             const { isBanned } = req.body;
 
+            if (req.user.tipo !== 'admin') {
+                 return res.status(403).json({ errorMessage: "This action requires administrator privileges." });
+            }
+
             if (typeof isBanned !== 'boolean') {
                 return res.status(400).json({ errorMessage: "Please provide a valid isBanned value (true or false)." });
             }
 
             const user = await User.findById(userID);
             if (!user) {
-                return res.status(404).json({ errorMessage: "Utilizador not found." });
+                return res.status(404).json({ errorMessage: "User not found." });
+            }
+
+            if (user.id === req.user.id) {
+                 return res.status(400).json({ errorMessage: "You cannot ban or unban yourself." });
             }
 
             await User.update(userID, { isBanned });
-            return res.status(200).json({ message: "Utilizador atualizado com sucesso." });
+            
+            const action = isBanned ? "banned" : "unbanned";
+            return res.status(200).json({ message: `User ${action} successfully.` });
 
         } catch (error) {
             console.error(error);

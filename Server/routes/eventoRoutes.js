@@ -1,20 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const eventoController = require('../controllers/eventoController');
-const { auth, isOrganizador } = require('../middleware/auth');
+const eventosController = require('../controllers/eventosController');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 // Rotas públicas
-router.get('/', eventoController.getAllEventos);
-router.get('/:id', eventoController.getEventoById);
+router.get('/', eventosController.getAllEventos);
+router.get('/:id', eventosController.getEventoById);
 
 // Rotas protegidas
-router.post('/', auth, isOrganizador, eventoController.createEvento);
-router.patch('/:id', auth, isOrganizador, eventoController.updateEvento);
-router.delete('/:id', auth, isOrganizador, eventoController.deleteEvento);
+router.post('/', authMiddleware.verifyToken, authMiddleware.isOrganizador, eventosController.createEvento);
+router.put('/:id', authMiddleware.verifyToken, authMiddleware.isOrganizador, eventosController.updateEvento);
+router.delete('/:id', authMiddleware.verifyToken, authMiddleware.isOrganizador, eventosController.deleteEvento);
 
 // Rotas para gerenciar inscrições
-router.post('/:id/inscricao', auth, eventoController.inscreverEvento);
-router.get('/:id/inscritos', auth, isOrganizador, eventoController.getInscritos);
-router.patch('/:id/inscricao/:inscricaoId', auth, isOrganizador, eventoController.atualizarStatusInscricao);
+router.post('/:id/inscrever', authMiddleware.verifyToken, authMiddleware.isEstudante, eventosController.inscreverEmEvento);
+router.get('/:id/inscritos', authMiddleware.verifyToken, authMiddleware.isOrganizador, eventosController.getInscritos);
+router.patch('/:id/inscricao/:inscricaoId', authMiddleware.verifyToken, authMiddleware.isOrganizador, eventosController.atualizarStatusInscricao);
 
 module.exports = router; 

@@ -1,10 +1,10 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../connection');
+const User = require('./userModel');
 
 const Evento = sequelize.define("Evento", {
     id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
         primaryKey: true,
         autoIncrement: true
     },
@@ -16,11 +16,7 @@ const Evento = sequelize.define("Evento", {
         type: DataTypes.TEXT,
         allowNull: false
     },
-    data_inicio: {
-        type: DataTypes.DATE,
-        allowNull: false
-    },
-    data_fim: {
+    data: {
         type: DataTypes.DATE,
         allowNull: false
     },
@@ -28,19 +24,13 @@ const Evento = sequelize.define("Evento", {
         type: DataTypes.STRING,
         allowNull: false
     },
-    capacidade: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        validate: {
-            min: 1
-        }
+    tipo: {
+        type: DataTypes.ENUM('cultural', 'academico', 'lazer'),
+        allowNull: false
     },
-    preco: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        validate: {
-            min: 0
-        }
+    imagem: {
+        type: DataTypes.STRING,
+        allowNull: false
     },
     organizador_id: {
         type: DataTypes.INTEGER,
@@ -48,17 +38,6 @@ const Evento = sequelize.define("Evento", {
         references: {
             model: 'Users',
             key: 'id'
-        }
-    },
-    status: {
-        type: DataTypes.ENUM('agendado', 'em_andamento', 'concluido', 'cancelado'),
-        defaultValue: 'agendado'
-    },
-    imagem: {
-        type: DataTypes.STRING,
-        allowNull: true,
-        validate: {
-            isUrl: true
         }
     }
 }, {

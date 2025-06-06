@@ -1,20 +1,13 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../connection');
+const User = require('./userModel');
+const Alojamento = require('./alojamentoModel');
 
 const Reserva = sequelize.define("Reserva", {
     id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
         primaryKey: true,
         autoIncrement: true
-    },
-    user_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-            model: 'Users',
-            key: 'id'
-        }
     },
     alojamento_id: {
         type: DataTypes.INTEGER,
@@ -24,24 +17,24 @@ const Reserva = sequelize.define("Reserva", {
             key: 'id'
         }
     },
+    user_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'Users',
+            key: 'id'
+        }
+    },
     data_inicio: {
-        type: DataTypes.DATE,
+        type: DataTypes.DATEONLY,
         allowNull: false
     },
     data_fim: {
-        type: DataTypes.DATE,
+        type: DataTypes.DATEONLY,
         allowNull: false
     },
-    status: {
-        type: DataTypes.ENUM('pendente', 'confirmada', 'cancelada', 'concluida'),
-        defaultValue: 'pendente'
-    },
-    valor_total: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
-    },
-    pagamento_status: {
-        type: DataTypes.ENUM('pendente', 'pago', 'reembolsado'),
+    estado: {
+        type: DataTypes.ENUM('pendente', 'confirmada', 'cancelada', 'rejeitada'),
         defaultValue: 'pendente'
     },
     observacoes: {

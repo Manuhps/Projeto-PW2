@@ -8,25 +8,20 @@ const app = express();
 
 // Middleware
 app.use(cors());
+app.use(morgan('tiny'));
 app.use(express.json());
-app.use(morgan('dev'));
 
 // Teste da conexão com o banco de dados
 sequelize.authenticate()
     .then(() => {
-        console.log('Conexão com o banco de dados estabelecida com sucesso.');
-        // Sincroniza os modelos com a base de dados
         return sequelize.sync({ alter: true });
-    })
-    .then(() => {
-        console.log('Modelos sincronizados com sucesso.');
     })
     .catch(err => {
         console.error('Erro:', err);
     });
 
 // Rotas
-app.use('/api', routes);
+app.use(routes);
 
 // Rota padrão
 app.get('/', (req, res) => {
@@ -44,7 +39,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: 'Algo deu errado!' });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
 });

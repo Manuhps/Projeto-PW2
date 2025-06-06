@@ -9,7 +9,16 @@ const db_dialect = 'mysql'
 
 const sequelize = new Sequelize(db_name, db_user, db_password, {
     host: db_host,
-    dialect: db_dialect
+    dialect: db_dialect,
+    logging: false
 });
+
+// Testar a conexão
+sequelize.authenticate()
+    .then(() => {
+    })
+    .catch(err => {
+        console.error('Erro', err);
+    });
 
 module.exports = sequelize

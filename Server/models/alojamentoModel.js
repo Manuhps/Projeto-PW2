@@ -1,10 +1,10 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../connection');
+const User = require('./userModel');
 
 const Alojamento = sequelize.define("Alojamento", {
     id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
         primaryKey: true,
         autoIncrement: true
     },
@@ -16,39 +16,29 @@ const Alojamento = sequelize.define("Alojamento", {
         type: DataTypes.TEXT,
         allowNull: false
     },
-    endereco: {
+    precoBase: {
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false
+    },
+    zona: {
         type: DataTypes.STRING,
         allowNull: false
     },
-    capacidade: {
+    tipo: {
+        type: DataTypes.ENUM('quarto_privado', 'quarto_partilhado', 'apartamento', 'casa'),
+        allowNull: false
+    },
+    imagem: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    proprietario_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        validate: {
-            min: 1
+        references: {
+            model: 'Users',
+            key: 'id'
         }
-    },
-    preco: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: false,
-        validate: {
-            min: 0
-        }
-    },
-    disponivel: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: true
-    },
-    imagens: {
-        type: DataTypes.JSON,
-        defaultValue: []
-    },
-    comodidades: {
-        type: DataTypes.JSON,
-        defaultValue: []
-    },
-    regras: {
-        type: DataTypes.TEXT,
-        allowNull: true
     }
 }, {
     timestamps: true,

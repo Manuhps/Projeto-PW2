@@ -1,17 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const reservaController = require('../controllers/reservaController');
-const { auth, isProprietario } = require('../middleware/auth');
+const reservasController = require('../controllers/reservasController');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-// Rotas protegidas para usuários
-router.get('/minhas-reservas', auth, reservaController.getMinhasReservas);
-router.post('/', auth, reservaController.createReserva);
-router.get('/:id', auth, reservaController.getReservaById);
-router.patch('/:id/cancelar', auth, reservaController.cancelarReserva);
+// Rotas públicas
+router.get('/', reservasController.getAllReservas);
+router.get('/:id', reservasController.getReservaById);
 
-// Rotas protegidas para proprietários
-router.get('/alojamento/:alojamentoId', auth, isProprietario, reservaController.getReservasAlojamento);
-router.patch('/:id/status', auth, isProprietario, reservaController.atualizarStatusReserva);
-router.patch('/:id/pagamento', auth, isProprietario, reservaController.atualizarStatusPagamento);
+// Rotas protegidas
+router.post('/', authMiddleware.verifyToken, reservasController.createReserva);
+router.put('/:id', authMiddleware.verifyToken, reservasController.updateReserva);
+router.delete('/:id', authMiddleware.verifyToken, reservasController.deleteReserva);
 
 module.exports = router; 

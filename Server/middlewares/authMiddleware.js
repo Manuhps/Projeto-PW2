@@ -9,7 +9,7 @@ const authMiddleware = {
 
             if (!authHeader) {
                 return res.status(401).json({ 
-                    message: "Token não fornecido" 
+                    message: "Token not provided" 
                 });
             }
 
@@ -17,7 +17,7 @@ const authMiddleware = {
 
             if (!token) {
                 return res.status(401).json({ 
-                    message: "Token não fornecido" 
+                    message: "Token not provided" 
                 });
             }
 
@@ -27,13 +27,13 @@ const authMiddleware = {
 
                 if (!user) {
                     return res.status(401).json({ 
-                        message: "Usuário não encontrado" 
+                        message: "User not found" 
                     });
                 }
 
                 if (user.isBanned) {
                     return res.status(403).json({ 
-                        message: "Usuário está banido" 
+                        message: "User is banned" 
                     });
                 }
 
@@ -41,13 +41,13 @@ const authMiddleware = {
                 next();
             } catch (error) {
                 return res.status(401).json({ 
-                    message: "Token inválido" 
+                    message: "Invalid token" 
                 });
             }
         } catch (error) {
             console.error(error);
             return res.status(500).json({ 
-                message: "Erro ao verificar autenticação" 
+                message: "Error verifying authentication" 
             });
         }
     },
@@ -56,7 +56,17 @@ const authMiddleware = {
     isAdmin: (req, res, next) => {
         if (!req.user.isAdmin) {
             return res.status(403).json({ 
-                message: "Acesso negado. Apenas administradores podem acessar este recurso." 
+                message: "Access denied. Only administrators can access this resource." 
+            });
+        }
+        next();
+    },
+
+    // Middleware para verificar se o usuário é estudante
+    isEstudante: (req, res, next) => {
+        if (req.user.tipo !== 'estudante') {
+            return res.status(403).json({ 
+                message: "Access denied. Only students can access this resource." 
             });
         }
         next();
@@ -66,7 +76,7 @@ const authMiddleware = {
     isProprietario: (req, res, next) => {
         if (req.user.tipo !== 'proprietario') {
             return res.status(403).json({ 
-                message: "Acesso negado. Apenas proprietários podem acessar este recurso." 
+                message: "Access denied. Only property owners can access this resource." 
             });
         }
         next();
@@ -76,7 +86,7 @@ const authMiddleware = {
     isOrganizador: (req, res, next) => {
         if (req.user.tipo !== 'organizador') {
             return res.status(403).json({ 
-                message: "Acesso negado. Apenas organizadores podem acessar este recurso." 
+                message: "Access denied. Only event organizers can access this resource." 
             });
         }
         next();
@@ -87,7 +97,7 @@ const authMiddleware = {
         const resourceId = req.params.id;
         if (req.user.id !== parseInt(resourceId) && !req.user.isAdmin) {
             return res.status(403).json({ 
-                message: "Acesso negado. Você não tem permissão para acessar este recurso." 
+                message: "Access denied. You don't have permission to access this resource." 
             });
         }
         next();

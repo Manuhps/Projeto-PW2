@@ -1,18 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const alojamentoController = require('../controllers/alojamentoController');
-const { auth, isProprietario } = require('../middleware/auth');
+const alojamentosController = require('../controllers/alojamentosController');
+const authMiddleware = require('../middlewares/authMiddleware');
 
 // Rotas públicas
-router.get('/', alojamentoController.getAllAlojamentos);
-router.get('/:id', alojamentoController.getAlojamentoById);
+router.get('/', alojamentosController.getAllAlojamentos);
+router.get('/:id', alojamentosController.getAlojamentoById);
 
 // Rotas protegidas
-router.post('/', auth, isProprietario, alojamentoController.createAlojamento);
-router.patch('/:id', auth, isProprietario, alojamentoController.updateAlojamento);
-router.delete('/:id', auth, isProprietario, alojamentoController.deleteAlojamento);
-
-// Rotas para gerenciar disponibilidade
-router.patch('/:id/disponibilidade', auth, isProprietario, alojamentoController.updateDisponibilidade);
+router.post('/', authMiddleware.verifyToken, authMiddleware.isProprietario, alojamentosController.createAlojamento);
+router.put('/:id', authMiddleware.verifyToken, authMiddleware.isOwnerOrAdmin, alojamentosController.updateAlojamento);
+router.delete('/:id', authMiddleware.verifyToken, authMiddleware.isOwnerOrAdmin, alojamentosController.deleteAlojamento);
 
 module.exports = router; 

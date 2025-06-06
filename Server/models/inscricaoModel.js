@@ -1,26 +1,22 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../connection');
+const User = require('./userModel');
+const Evento = require('./eventoModel');
 
 const Inscricao = sequelize.define("Inscricao", {
-    id: {
+    evento_id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
         primaryKey: true,
-        autoIncrement: true
-    },
-    user_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
         references: {
-            model: 'Users',
+            model: 'Eventos',
             key: 'id'
         }
     },
-    evento_id: {
+    user_id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        primaryKey: true,
         references: {
-            model: 'Eventos',
+            model: 'Users',
             key: 'id'
         }
     },
@@ -28,21 +24,9 @@ const Inscricao = sequelize.define("Inscricao", {
         type: DataTypes.ENUM('pendente', 'confirmada', 'cancelada'),
         defaultValue: 'pendente'
     },
-    data_inscricao: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    },
-    pagamento_status: {
-        type: DataTypes.ENUM('pendente', 'pago', 'reembolsado'),
-        defaultValue: 'pendente'
-    },
     valor_pago: {
         type: DataTypes.DECIMAL(10, 2),
-        allowNull: false
-    },
-    observacoes: {
-        type: DataTypes.TEXT,
-        allowNull: true
+        defaultValue: 0.00
     }
 }, {
     timestamps: true,
