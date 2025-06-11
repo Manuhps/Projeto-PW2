@@ -6,32 +6,43 @@ const userController = {
     login: async (req, res) => {
         try {
             const { email, password } = req.body;
+            console.log('Tentativa de login para email:', email);
 
             if (!email || !password) {
+                console.log('Faltam credenciais:', { email: !!email, password: !!password });
                 return res.status(400).json({ 
-                    errorMessage: "Por favor, forneça email e password." 
+                    errorMessage: "Por favor, forneça email e password.",
+                    details: {
+                        email: !email ? "Email é obrigatório" : "Email fornecido",
+                        password: !password ? "Password é obrigatória" : "Password fornecida"
+                    }
                 });
             }
 
             const user = await User.findOne({ where: { email } });
+            console.log('user encontrado:', user ? 'Sim' : 'Não');
             
             if (!user) {
                 return res.status(401).json({ 
-                    errorMessage: "Credenciais inválidas." 
+                    errorMessage: "Credenciais inválidas.",
+                    details: "Não existe nenhum utilizador registado com este email."
                 });
             }
 
             if (user.banido) {
                 return res.status(403).json({ 
-                    errorMessage: "Esta conta foi banida. Contacte o administrador para mais informações." 
+                    errorMessage: "Esta conta foi banida.",
+                    details: "Contacte o administrador para mais informações."
                 });
             }
 
             const validPassword = await bcrypt.compare(password, user.password);
+            console.log('Senha válida:', validPassword ? 'Sim' : 'Não');
             
             if (!validPassword) {
                 return res.status(401).json({ 
-                    errorMessage: "Credenciais inválidas." 
+                    errorMessage: "Credenciais inválidas.",
+                    details: "A password fornecida está incorreta."
                 });
             }
 
@@ -48,6 +59,7 @@ const userController = {
                 tipo: user.tipo
             };
 
+            console.log('Login bem sucedido para:', user.username);
             return res.status(200).json({
                 message: "Login efetuado com sucesso.",
                 token,
@@ -55,9 +67,13 @@ const userController = {
             });
 
         } catch (error) {
-            console.error(error);
+            console.error('Erro detalhado no login:', {
+                message: error.message,
+                stack: error.stack
+            });
             return res.status(500).json({ 
-                errorMessage: "Ocorreu um erro. Por favor, tente novamente mais tarde." 
+                errorMessage: "Ocorreu um erro durante o login.",
+                details: error.message
             });
         }
     },
@@ -87,19 +103,17 @@ const userController = {
                 });
             }
 
-            const tiposValidos = ['estudante', 'proprietario', 'organizador', 'admin'];
+            const tiposValidos = ['estudante', 'proprietario', 'organizador'];
             if (!tiposValidos.includes(tipo)) {
                 return res.status(400).json({ 
-                    errorMessage: "Tipo de utilizador inválido. Os tipos permitidos são: estudante, proprietario, organizador, admin." 
+                    errorMessage: "Tipo de utilizador inválido. Os tipos permitidos são: estudante, proprietario, organizador." 
                 });
             }
-
-            const hashedPassword = await bcrypt.hash(password, 10);
 
             const user = await User.create({
                 username,
                 email,
-                password: hashedPassword,
+                password,
                 tipo
             });
 
@@ -118,7 +132,8 @@ const userController = {
         } catch (error) {
             console.error(error);
             return res.status(500).json({ 
-                errorMessage: "Ocorreu um erro. Por favor, tente novamente mais tarde." 
+                errorMessage: "Ocorreu um erro durante o registo.",
+                details: error.message
             });
         }
     },
@@ -250,6 +265,56 @@ const userController = {
         } catch (error) {
             console.error(error);
             return res.status(500).json({ errorMessage: "Something went wrong. Please try again later." });
+        }
+    },
+
+    promoteToAdmin: async (req, res) => {
+        try {
+            const { userID } = req.params;
+
+            // Verificar se o usuário que está fazendo a requisição é admin
+            if (req.user.tipo !== 'admin') {
+                return res.status(403).json({ 
+                    errorMessage: "Apenas admins podem promover outros users." 
+                });
+            }
+
+            // Buscar o usuário que será promovido
+            const userToPromote = await User.findByPk(userID);
+            if (!userToPromote) {
+                return res.status(404).json({ 
+                    errorMessage: "User nao encontrado." 
+                });
+            }
+
+            // Verificar se o usuário já é admin
+            if (userToPromote.tipo === 'admin') {
+                return res.status(400).json({ 
+                    errorMessage: "Este user já é um admin." 
+                });
+            }
+
+            // Promover o usuário para admin
+            await userToPromote.update({
+                tipo: 'admin',
+                isAdmin: true
+            });
+
+            return res.status(200).json({
+                message: "user promovido a admin com sucesso.",
+                user: {
+                    id: userToPromote.id,
+                    username: userToPromote.username,
+                    email: userToPromote.email,
+                    tipo: userToPromote.tipo
+                }
+            });
+
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ 
+                errorMessage: "Ocorreu um erro. Por favor, tente novamente mais tarde." 
+            });
         }
     }
 };

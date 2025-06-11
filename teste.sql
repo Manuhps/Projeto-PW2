@@ -1,12 +1,3 @@
--- Exemplo de Inserts para users (Substitui os valores e as passwords)
-INSERT INTO users (username, email, password, tipo, isAdmin, isBanned) VALUES
-('admin_user', 'admin@example.com', '[HASHED_PASSWORD_ADMIN]', 'admin', TRUE, FALSE),
-('proprietario_user', 'proprietario@example.com', '[HASHED_PASSWORD_PROPRIETARIO]', 'proprietario', FALSE, FALSE),
-('organizador_user', 'organizador@example.com', '[HASHED_PASSWORD_ORGANIZADOR]', 'organizador', FALSE, FALSE),
-('estudante_user', 'estudante@example.com', '[HASHED_PASSWORD_ESTUDANTE]', 'estudante', FALSE, FALSE);
-
--- Assume que os IDs dos utilizadores inseridos acima são 1, 2, 3, 4 respetivamente
--- (Podes verificar os IDs gerados depois de inserir os utilizadores)
 
 -- Exemplo de Inserts para alojamentos
 INSERT INTO alojamentos (nome, descricao, precoBase, zona, tipo, imagem, proprietario_id) VALUES
