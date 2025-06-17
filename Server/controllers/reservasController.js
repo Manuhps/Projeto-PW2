@@ -336,7 +336,7 @@ const reservasController = {
                 });
             }
             // Atualiza o estado para cancelada
-            await reserva.update({ estado: 'cancelada' });
+            await reserva.update({ status: 'cancelada' });
 
             return res.status(200).json({ 
                 message: "Reserva cancelada com sucesso." 
