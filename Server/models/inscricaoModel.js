@@ -21,7 +21,7 @@ const Inscricao = sequelize.define("Inscricao", {
         }
     },
     status: {
-        type: DataTypes.ENUM('pendente', 'confirmada', 'cancelada'),
+        type: DataTypes.ENUM('pendente', 'concluido', 'cancelado'),
         defaultValue: 'pendente'
     },
     valor_pago: {
@@ -29,6 +29,7 @@ const Inscricao = sequelize.define("Inscricao", {
         defaultValue: 0.00
     }
 }, {
+    tableName: 'Inscricoes',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at'

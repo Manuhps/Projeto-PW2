@@ -29,7 +29,7 @@ const userController = {
                 });
             }
 
-            if (user.banido) {
+            if (user.isBanned) {
                 return res.status(403).json({ 
                     errorMessage: "Esta conta foi banida.",
                     details: "Contacte o administrador para mais informações."
@@ -67,13 +67,9 @@ const userController = {
             });
 
         } catch (error) {
-            console.error('Erro detalhado no login:', {
-                message: error.message,
-                stack: error.stack
-            });
+            console.error('Erro detalhado no login:', error.message);
             return res.status(500).json({ 
                 errorMessage: "Ocorreu um erro durante o login.",
-                details: error.message
             });
         }
     },
@@ -133,23 +129,17 @@ const userController = {
             console.error(error);
             return res.status(500).json({ 
                 errorMessage: "Ocorreu um erro durante o registo.",
-                details: error.message
             });
         }
     },
 
     getMe: async (req, res) => {
         try {
-            const user = await User.findById(req.user.id);
+            const user = await User.findByPk(req.user.id);
             
             if (!user) {
                 return res.status(404).json({ errorMessage: "User Not Found." });
             }
-
-            const links = [
-                { rel: "login", href: "/users/login", method: "POST" },
-                { rel: "register", href: "/users", method: "POST" }
-            ];
 
             return res.status(200).json({
                 user: {
@@ -161,7 +151,6 @@ const userController = {
                     tipo: user.tipo,
                     isBanned: user.isBanned
                 },
-                links
             });
 
         } catch (error) {
@@ -179,7 +168,9 @@ const userController = {
                 return res.status(400).json({ errorMessage: "Please provide valid values to update." });
             }
 
-            await User.update(userId, { username, email, password, address, profileImg });
+            await User.update({ username, email, password, address, profileImg }, {
+                where: { id: userId }
+            });
             return res.status(200).json({ message: "Dados atualizados com sucesso." });
 
         } catch (error) {
@@ -190,7 +181,7 @@ const userController = {
 
     getAllUsers: async (req, res) => {
         try {
-            const { role, isBanned, limit = 5, page = 0 } = req.query;
+            const { tipo, isBanned, limit = 5, page = 0 } = req.query;
             
             if (limit <= 0) {
                 return res.status(400).json({ errorMessage: "Limit must be a positive number, higher than 0" });
@@ -201,21 +192,25 @@ const userController = {
             }
 
             const filters = {};
-            if (role) filters.role = role;
+            if (tipo) filters.tipo = tipo;
             if (isBanned !== undefined) filters.isBanned = isBanned === 'true';
             
-            const users = await User.getAll(parseInt(limit), parseInt(page), filters);
-            const totalUsers = await User.count(filters);
+            const offset = parseInt(page) * parseInt(limit);
+
+            const { count: totalUsers, rows: users } = await User.findAndCountAll({
+                where: filters,
+                limit: parseInt(limit),
+                offset: offset,
+                attributes: ['id', 'username', 'email', 'tipo', 'isAdmin', 'isBanned', 'address', 'profileImg']
+            });
 
             if (totalUsers === 0) {
                  return res.status(404).json({ errorMessage: "No users found matching the criteria" });
             }
 
             const links = [
-                { rel: "login", href: "/users/login", method: "POST" },
-                { rel: "register", href: "/users", method: "POST" },
-                { rel: "editProfile", href: "/users/me", method: "PATCH" },
-                { rel: "banUser", href: "/users/:userID", method: "PATCH" }
+                { rel: "banUser", href: "/users/:userID", method: "PATCH" },
+                { rel: "promoteToAdmin", href: "/users/:userID/promote", method: "PATCH" }
             ];
 
             return res.status(200).json({
@@ -248,7 +243,7 @@ const userController = {
                 return res.status(400).json({ errorMessage: "Please provide a valid isBanned value (true or false)." });
             }
 
-            const user = await User.findById(userID);
+            const user = await User.findByPk(userID);
             if (!user) {
                 return res.status(404).json({ errorMessage: "User not found." });
             }
@@ -257,7 +252,7 @@ const userController = {
                  return res.status(400).json({ errorMessage: "You cannot ban or unban yourself." });
             }
 
-            await User.update(userID, { isBanned });
+            await User.update({ isBanned }, { where: { id: userID } });
             
             const action = isBanned ? "banned" : "unbanned";
             return res.status(200).json({ message: `User ${action} successfully.` });

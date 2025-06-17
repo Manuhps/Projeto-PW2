@@ -4,24 +4,32 @@ const eventosController = {
     // Criar um novo evento
     createEvento: async (req, res) => {
         try {
-            const { nome, descricao, data_inicio, data_fim, local, capacidade, preco, imagem } = req.body;
+            const { nome, descricao, data_inicio, data_fim, local, capacidade, preco, imagem, tipo } = req.body;
             const organizador_id = req.user.id;
 
             // Validações simples
-            if (!nome || !descricao || !data_inicio || !data_fim || !local || !capacidade || !preco) {
+            if (!nome || !descricao || !data_inicio || !data_fim || !local || !capacidade || !preco || !tipo) {
                 return res.status(400).json({ mensagem: "Todos os campos são obrigatórios" });
+            }
+
+            // Validar tipo do evento
+            const tiposValidos = ['cultural', 'academico', 'lazer'];
+            if (!tiposValidos.includes(tipo)) {
+                return res.status(400).json({ mensagem: "Tipo de evento inválido. Os tipos permitidos são: cultural, academico, lazer" });
             }
 
             const evento = await Evento.create({
                 nome,
                 descricao,
+                data: data_inicio, // Usando data_inicio como data do evento
                 data_inicio,
                 data_fim,
                 local,
                 capacidade,
                 preco,
                 organizador_id,
-                imagem
+                imagem,
+                tipo
             });
 
             res.status(201).json(evento);
@@ -94,6 +102,19 @@ const eventosController = {
                 return res.status(403).json({ mensagem: "Não autorizado" });
             }
 
+            // Validação simples: se algum campo obrigatório for enviado, todos devem estar preenchidos e preco deve ser número
+            const camposObrigatorios = ['nome', 'descricao', 'data_inicio', 'data_fim', 'local', 'capacidade', 'preco', 'tipo', 'imagem'];
+            if (camposObrigatorios.some(campo => req.body[campo] !== undefined)) {
+                for (const campo of camposObrigatorios) {
+                    if (req.body[campo] === undefined || req.body[campo] === null || req.body[campo] === "") {
+                        return res.status(400).json({ mensagem: `O campo '${campo}' não pode estar vazio` });
+                    }
+                }
+                if (isNaN(Number(req.body.preco))) {
+                    return res.status(400).json({ mensagem: "O campo 'preco' deve ser um número" });
+                }
+            }
+
             await evento.update(req.body);
             res.status(200).json(evento);
         } catch (error) {
@@ -116,7 +137,7 @@ const eventosController = {
             }
 
             await evento.destroy();
-            res.status(200).json({ mensagem: "Evento excluído com sucesso" });
+            res.status(200).json({ mensagem: "Evento apagado com sucesso" });
         } catch (error) {
             console.error('Erro ao excluir evento:', error);
             res.status(500).json({ mensagem: "Erro ao excluir evento" });
@@ -165,7 +186,14 @@ const eventosController = {
 
             return res.status(201).json({
                 message: "Inscrição efetuada com sucesso.",
-                inscricao
+                inscricao: {
+                    status: inscricao.status,
+                    valor_pago: inscricao.valor_pago,
+                    user_id: inscricao.user_id,
+                    evento_id: inscricao.evento_id,
+                    updated_at: inscricao.updated_at,
+                    created_at: inscricao.created_at
+                }
             });
 
         } catch (error) {
@@ -175,87 +203,6 @@ const eventosController = {
             });
         }
     },
-
-    // Listar inscritos em um evento (para organizadores)
-    getInscritos: async (req, res) => {
-        try {
-            const { id } = req.params;
-            const userId = req.user.id;
-
-            // Verifica se o user é o organizador do evento
-            const evento = await Evento.findByPk(id);
-            if (!evento) {
-                return res.status(404).json({ mensagem: 'Evento não encontrado' });
-            }
-            if (evento.organizador_id !== userId) {
-                return res.status(403).json({ mensagem: 'Apenas o organizador do evento pode ver as inscrições' });
-            }
-
-            const inscricoes = await Inscricao.findAll({
-                where: { evento_id: id },
-                include: [{
-                    model: User,
-                    as: 'user',
-                    attributes: ['id', 'username', 'email']
-                }]
-            });
-
-            return res.status(200).json(inscricoes);
-
-        } catch (error) {
-            console.error('Erro ao listar inscritos:', error);
-            res.status(500).json({ 
-                mensagem: 'Erro ao listar inscritos',
-                erro: error.message 
-            });
-        }
-    },
-
-    // Atualizar status de inscrição (para organizadores)
-    atualizarStatusInscricao: async (req, res) => {
-        try {
-            const { id, inscricaoId } = req.params;
-            const userId = req.user.id;
-            const { status } = req.body;
-
-            // Verifica se o user é o organizador do evento associado à inscrição
-            const inscricao = await Inscricao.findByPk(inscricaoId, {
-                include: [{
-                    model: Evento,
-                    as: 'evento'
-                }]
-            });
-
-            if (!inscricao) {
-                return res.status(404).json({ mensagem: 'Inscrição não encontrada' });
-            }
-
-            if (inscricao.evento.organizador_id !== userId) {
-                return res.status(403).json({ mensagem: 'Apenas o organizador do evento pode atualizar o estado da inscrição' });
-            }
-
-            // Validações de status (ex: 'pendente', 'confirmada', 'cancelada')
-            if (!['pendente', 'confirmada', 'cancelada'].includes(status)) {
-                 return res.status(400).json({ 
-                    errorMessage: "Estado da inscrição inválido." 
-                });
-            }
-
-            await inscricao.update({ status });
-
-            return res.status(200).json({
-                message: "Estado da inscrição atualizado com sucesso.",
-                inscricao
-            });
-
-        } catch (error) {
-            console.error('Erro ao atualizar status da inscrição:', error);
-            res.status(500).json({ 
-                mensagem: 'Erro ao atualizar status da inscrição',
-                erro: error.message 
-            });
-        }
-    }
-};
+}
 
 module.exports = eventosController;

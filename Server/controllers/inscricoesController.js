@@ -1,46 +1,32 @@
 const { Inscricao, Evento, User } = require('../models');
 
 const inscricoesController = {
-    // Criar uma nova inscrição
-    createInscricao: async (req, res) => {
-        try {
-            const { evento_id } = req.body;
-            const user_id = req.user.id;
-
-            if (!evento_id) {
-                return res.status(400).json({ mensagem: "Evento é obrigatório" });
-            }
-
-            const inscricao = await Inscricao.create({
-                evento_id,
-                user_id,
-                status: 'pendente'
-            });
-
-            res.status(201).json(inscricao);
-        } catch (error) {
-            console.error('Erro ao criar inscrição:', error);
-            res.status(500).json({ mensagem: "Erro ao criar inscrição" });
-        }
-    },
-
-    // Listar todas as inscrições
+    // Listar todas as inscrições de um determinado evento
     getAllInscricoes: async (req, res) => {
         try {
             const { page = 1, limit = 10 } = req.query;
             const offset = (page - 1) * limit;
+            const { eventoId } = req.params;
+
+            const evento = await Evento.findByPk(eventoId);
+            if (!evento) {
+                return res.status(404).json({ mensagem: 'Evento não encontrado' });
+            }
+
+            const where = eventoId ? { evento_id: eventoId } : {};
 
             const inscricoes = await Inscricao.findAndCountAll({
+                where,
                 include: [
                     {
                         model: User,
-                        as: 'usuario',
+                        as: 'user',
                         attributes: ['id', 'username', 'email']
                     },
                     {
                         model: Evento,
                         as: 'evento',
-                        attributes: ['id', 'nome', 'data_inicio']
+                        attributes: ['id', 'nome', 'data']
                     }
                 ],
                 limit: +limit,
@@ -58,75 +44,76 @@ const inscricoesController = {
             res.status(500).json({ mensagem: "Erro ao listar inscrições" });
         }
     },
-
-    // Obter uma inscrição específica
-    getInscricaoById: async (req, res) => {
+    // Organizador atualiza o status de uma inscrição do seu evento
+    organizadorUpdateInscricao: async (req, res) => {
         try {
-            const inscricao = await Inscricao.findByPk(req.params.id, {
-                include: [
-                    {
-                        model: User,
-                        as: 'usuario',
-                        attributes: ['id', 'username', 'email']
-                    },
-                    {
-                        model: Evento,
-                        as: 'evento',
-                        attributes: ['id', 'nome', 'data_inicio']
-                    }
-                ]
+            const { eventoId, userId } = req.params;
+            const { status } = req.body;
+            const organizadorId = req.user.id;
+
+            // Buscar o evento
+            const evento = await Evento.findByPk(eventoId);
+            if (!evento) {
+                return res.status(404).json({ mensagem: 'Evento não encontrado' });
+            }
+
+            // Verificar se o user autenticado é o organizador
+            if (evento.organizador_id !== organizadorId) {
+                return res.status(403).json({ mensagem: 'Apenas o organizador do evento pode atualizar inscrições.' });
+            }
+
+            // Buscar a inscrição pelo par (evento_id, user_id)
+            const inscricao = await Inscricao.findOne({
+                where: { evento_id: eventoId, user_id: userId }
             });
-
             if (!inscricao) {
-                return res.status(404).json({ mensagem: "Inscrição não encontrada" });
+                return res.status(404).json({ mensagem: 'Inscrição não encontrada' });
             }
 
-            res.status(200).json(inscricao);
-        } catch (error) {
-            console.error('Erro ao obter inscrição:', error);
-            res.status(500).json({ mensagem: "Erro ao obter inscrição" });
-        }
-    },
-
-    // Atualizar uma inscrição
-    updateInscricao: async (req, res) => {
-        try {
-            const inscricao = await Inscricao.findByPk(req.params.id);
-            
-            if (!inscricao) {
-                return res.status(404).json({ mensagem: "Inscrição não encontrada" });
+            // Validar status permitido
+            if (!['concluido', 'cancelado'].includes(status)) {
+                return res.status(400).json({ mensagem: 'Status inválido.' });
             }
 
-            if (inscricao.user_id !== req.user.id) {
-                return res.status(403).json({ mensagem: "Não autorizado" });
-            }
+            await inscricao.update({ status });
+            return res.status(200).json({ mensagem: 'Status atualizado com sucesso.', inscricao });
 
-            await inscricao.update(req.body);
-            res.status(200).json(inscricao);
         } catch (error) {
             console.error('Erro ao atualizar inscrição:', error);
-            res.status(500).json({ mensagem: "Erro ao atualizar inscrição" });
+            res.status(500).json({ mensagem: 'Erro ao atualizar inscrição.' });
         }
     },
-
-    // Excluir uma inscrição
+    // Organizador apaga a inscrição de um participante do seu evento
     deleteInscricao: async (req, res) => {
         try {
-            const inscricao = await Inscricao.findByPk(req.params.id);
-            
-            if (!inscricao) {
-                return res.status(404).json({ mensagem: "Inscrição não encontrada" });
+            const { eventoId, userId } = req.params;
+            const organizadorId = req.user.id;
+
+            // Buscar o evento
+            const evento = await Evento.findByPk(eventoId);
+            if (!evento) {
+                return res.status(404).json({ mensagem: 'Evento não encontrado' });
             }
 
-            if (inscricao.user_id !== req.user.id) {
-                return res.status(403).json({ mensagem: "Não autorizado" });
+            // Verificar se o user autenticado é o organizador
+            if (evento.organizador_id !== organizadorId) {
+                return res.status(403).json({ mensagem: 'Apenas o organizador do evento pode apagar inscrições.' });
+            }
+
+            // Buscar a inscrição pelo par (evento_id, user_id)
+            const inscricao = await Inscricao.findOne({
+                where: { evento_id: eventoId, user_id: userId }
+            });
+            if (!inscricao) {
+                return res.status(404).json({ mensagem: 'Inscrição não encontrada' });
             }
 
             await inscricao.destroy();
-            res.status(200).json({ mensagem: "Inscrição excluída com sucesso" });
+            return res.status(200).json({ mensagem: 'Inscrição apagada com sucesso.' });
+
         } catch (error) {
-            console.error('Erro ao excluir inscrição:', error);
-            res.status(500).json({ mensagem: "Erro ao excluir inscrição" });
+            console.error('Erro ao apagar inscrição:', error);
+            res.status(500).json({ mensagem: 'Erro ao apagar inscrição.' });
         }
     }
 };

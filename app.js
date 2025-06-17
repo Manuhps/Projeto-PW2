@@ -10,7 +10,7 @@ const app = express();
 app.use(cors());
 app.use(morgan('tiny'));
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
 
 // Middleware para debug
 app.use((req, res, next) => {
@@ -34,7 +34,7 @@ app.use((req, res) => {
 // Tratamento de erros
 app.use((err, req, res, next) => {
     console.error(err.stack);
-    res.status(500).json({ message: 'errado!' });
+    res.status(500).json({ message: 'Something went wrong. Please try again later.!' });
 });
 
 const PORT = process.env.PORT || 8080;

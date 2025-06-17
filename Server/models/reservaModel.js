@@ -34,7 +34,7 @@ const Reserva = sequelize.define("Reserva", {
         allowNull: false
     },
     estado: {
-        type: DataTypes.ENUM('pendente', 'confirmada', 'cancelada', 'rejeitada'),
+        type: DataTypes.ENUM('pendente', 'concluido', 'cancelado', 'rejeitado'),
         defaultValue: 'pendente'
     },
     observacoes: {
@@ -42,6 +42,7 @@ const Reserva = sequelize.define("Reserva", {
         allowNull: true
     }
 }, {
+    tableName: 'Reservas',
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at'

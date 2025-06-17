@@ -90,17 +90,6 @@ const authMiddleware = {
             });
         }
         next();
-    },
-
-    // Middleware para verificar se o usuário é o dono do recurso ou admin
-    isOwnerOrAdmin: (req, res, next) => {
-        const resourceId = req.params.id;
-        if (req.user.id !== parseInt(resourceId) && !req.user.isAdmin) {
-            return res.status(403).json({ 
-                message: "Access denied. You don't have permission to access this resource." 
-            });
-        }
-        next();
     }
 };
 

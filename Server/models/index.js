@@ -56,7 +56,7 @@ Evento.hasMany(Avaliacao, {
 
 Reserva.belongsTo(User, { 
     foreignKey: 'user_id',
-    as: 'usuario'
+    as: 'user'
 });
 Reserva.belongsTo(Alojamento, { 
     foreignKey: 'alojamento_id',
@@ -65,7 +65,7 @@ Reserva.belongsTo(Alojamento, {
 
 Inscricao.belongsTo(User, { 
     foreignKey: 'user_id',
-    as: 'usuario'
+    as: 'user'
 });
 Inscricao.belongsTo(Evento, { 
     foreignKey: 'evento_id',
@@ -74,7 +74,7 @@ Inscricao.belongsTo(Evento, {
 
 Avaliacao.belongsTo(User, {
     foreignKey: 'user_id',
-    as: 'usuario'
+    as: 'user'
 });
 Avaliacao.belongsTo(Alojamento, {
     foreignKey: 'alojamento_id',

@@ -13,12 +13,17 @@ const sequelize = new Sequelize(db_name, db_user, db_password, {
     logging: false
 });
 
-// Testar a conexão
+// Testar a conexão e sincronizar modelos
 sequelize.authenticate()
     .then(() => {
+        console.log('Conexão com a base de dados estabelecida com sucesso.');
+        return sequelize.sync({ alter: true });
+    })
+    .then(() => {
+        console.log('Modelos sincronizados com a base de dados.');
     })
     .catch(err => {
-        console.error('Erro', err);
+        console.error('Erro ao conectar ou sincronizar a base de dados:', err);
     });
 
 module.exports = sequelize

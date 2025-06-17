@@ -2,41 +2,6 @@ const { Reserva, Alojamento, User } = require('../models');
 const { Op } = require('sequelize');
 
 const reservasController = {
-    // Listar todas as reservas
-    getAllReservas: async (req, res) => {
-        try {
-            const { page = 1, limit = 10 } = req.query;
-            const offset = (page - 1) * limit;
-
-            const reservas = await Reserva.findAndCountAll({
-                include: [
-                    {
-                        model: User,
-                        as: 'usuario',
-                        attributes: ['id', 'username', 'email']
-                    },
-                    {
-                        model: Alojamento,
-                        as: 'alojamento',
-                        attributes: ['id', 'nome', 'zona']
-                    }
-                ],
-                limit: +limit,
-                offset: +offset
-            });
-
-            res.status(200).json({
-                total: reservas.count,
-                totalPages: Math.ceil(reservas.count / limit),
-                currentPage: +page,
-                data: reservas.rows
-            });
-        } catch (error) {
-            console.error('Erro ao listar reservas:', error);
-            res.status(500).json({ mensagem: "Erro ao listar reservas" });
-        }
-    },
-
     // Listar todas as reservas do usuário (Minhas Reservas)
     getMinhasReservas: async (req, res) => {
         try {
@@ -84,6 +49,40 @@ const reservasController = {
         }
     },
 
+
+    // Obter detalhes de uma reserva específica
+    getReservaById: async (req, res) => {
+        try {
+            const reserva = await Reserva.findByPk(req.params.id, {
+                include: [
+                    {
+                        model: User,
+                        as: 'user',
+                        attributes: ['id', 'username', 'email']
+                    },
+                    {
+                        model: Alojamento,
+                        as: 'alojamento',
+                        include: [{
+                            model: User,
+                            as: 'proprietario',
+                            attributes: ['id', 'username', 'email']
+                        }],
+                        attributes: ['id', 'nome', 'zona']
+                    }
+                ]
+            });
+
+            if (!reserva) {
+                return res.status(404).json({ mensagem: "Reserva não encontrada" });
+            }
+
+            res.status(200).json(reserva);
+        } catch (error) {
+            console.error('Erro ao obter reserva:', error);
+            res.status(500).json({ mensagem: "Erro ao obter reserva" });
+        }
+    },
     // Listar todas as reservas de um alojamento (para proprietários)
     getReservasAlojamento: async (req, res) => {
         try {
@@ -145,37 +144,8 @@ const reservasController = {
         }
     },
 
-    // Obter detalhes de uma reserva específica
-    getReservaById: async (req, res) => {
-        try {
-            const reserva = await Reserva.findByPk(req.params.id, {
-                include: [
-                    {
-                        model: User,
-                        as: 'usuario',
-                        attributes: ['id', 'username', 'email']
-                    },
-                    {
-                        model: Alojamento,
-                        as: 'alojamento',
-                        attributes: ['id', 'nome', 'zona']
-                    }
-                ]
-            });
-
-            if (!reserva) {
-                return res.status(404).json({ mensagem: "Reserva não encontrada" });
-            }
-
-            res.status(200).json(reserva);
-        } catch (error) {
-            console.error('Erro ao obter reserva:', error);
-            res.status(500).json({ mensagem: "Erro ao obter reserva" });
-        }
-    },
-
-    // Criar uma nova reserva
-    createReserva: async (req, res) => {
+    // Criar uma nova reserva (agora `fazerReserva`)
+    fazerReserva: async (req, res) => {
         try {
             const { alojamento_id, data_inicio, data_fim } = req.body;
             const user_id = req.user.id;
@@ -184,60 +154,29 @@ const reservasController = {
                 return res.status(400).json({ mensagem: "Todos os campos são obrigatórios" });
             }
 
+            // Verificar disponibilidade do alojamento (exemplo, precisa de lógica mais robusta)
+            const alojamento = await Alojamento.findByPk(alojamento_id);
+            if (!alojamento) {
+                return res.status(404).json({ mensagem: "Alojamento não encontrado" });
+            }
+
+            // Lógica para verificar sobreposição de datas e capacidade aqui (importante para um sistema real)
+            // Por enquanto, apenas cria a reserva
+
             const reserva = await Reserva.create({
                 alojamento_id,
                 user_id,
                 data_inicio,
                 data_fim,
-                estado: 'pendente'
+                // O total_preco será calculado aqui no backend, ou pode ser enviado no body
+                // Por simplicidade, vou assumir que o precoBase do alojamento é o valor por dia
+                total_preco: alojamento.precoBase * ((new Date(data_fim) - new Date(data_inicio)) / (1000 * 60 * 60 * 24))
             });
 
             res.status(201).json(reserva);
         } catch (error) {
             console.error('Erro ao criar reserva:', error);
             res.status(500).json({ mensagem: "Erro ao criar reserva" });
-        }
-    },
-
-    // Atualizar uma reserva
-    updateReserva: async (req, res) => {
-        try {
-            const reserva = await Reserva.findByPk(req.params.id);
-            
-            if (!reserva) {
-                return res.status(404).json({ mensagem: "Reserva não encontrada" });
-            }
-
-            if (reserva.user_id !== req.user.id) {
-                return res.status(403).json({ mensagem: "Não autorizado" });
-            }
-
-            await reserva.update(req.body);
-            res.status(200).json(reserva);
-        } catch (error) {
-            console.error('Erro ao atualizar reserva:', error);
-            res.status(500).json({ mensagem: "Erro ao atualizar reserva" });
-        }
-    },
-
-    // Excluir uma reserva
-    deleteReserva: async (req, res) => {
-        try {
-            const reserva = await Reserva.findByPk(req.params.id);
-            
-            if (!reserva) {
-                return res.status(404).json({ mensagem: "Reserva não encontrada" });
-            }
-
-            if (reserva.user_id !== req.user.id) {
-                return res.status(403).json({ mensagem: "Não autorizado" });
-            }
-
-            await reserva.destroy();
-            res.status(200).json({ mensagem: "Reserva excluída com sucesso" });
-        } catch (error) {
-            console.error('Erro ao excluir reserva:', error);
-            res.status(500).json({ mensagem: "Erro ao excluir reserva" });
         }
     },
 
@@ -269,7 +208,7 @@ const reservasController = {
             }
 
             // Validações de status
-            if (!['pendente', 'confirmada', 'cancelada', 'concluida'].includes(status)) {
+            if (!['pendente', 'confirmado', 'cancelado', 'concluido'].includes(status)) {
                 return res.status(400).json({ 
                     errorMessage: "Estado inválido." 
                 });
@@ -277,11 +216,11 @@ const reservasController = {
 
             // Lógica de permissão para transições de status (ajustar conforme necessário)
             // Ex: Proprietário confirma/rejeita pendente; Estudante cancela pendente.
-            if (['confirmada', 'cancelada'].includes(status) && reserva.alojamento.proprietario_id !== userId) {
-                 if (status === 'cancelada' && reserva.user_id === userId && reserva.status === 'pendente') { /* Permite */ } // Estudante cancela pendente
-                 else if (status === 'confirmada' && reserva.alojamento.proprietario_id === userId && reserva.status === 'pendente') { /* Permite */ } // Proprietário confirma pendente
-                 else if (status === 'cancelada' && reserva.alojamento.proprietario_id === userId && reserva.status === 'pendente') { /* Permite */ } // Proprietário cancela pendente
-                 else if (status === 'concluida' && reserva.alojamento.proprietario_id === userId && reserva.status === 'confirmada') { /* Permite */ } // Proprietário marca como concluida (opcional)
+            if (['confirmado', 'cancelado'].includes(status) && reserva.alojamento.proprietario_id !== userId) {
+                 if (status === 'cancelado' && reserva.user_id === userId && reserva.status === 'pendente') { /* Permite */ } // Estudante cancela pendente
+                 else if (status === 'confirmado' && reserva.alojamento.proprietario_id === userId && reserva.status === 'pendente') { /* Permite */ } // Proprietário confirma pendente
+                 else if (status === 'cancelado' && reserva.alojamento.proprietario_id === userId && reserva.status === 'pendente') { /* Permite */ } // Proprietário cancela pendente
+                 else if (status === 'concluido' && reserva.alojamento.proprietario_id === userId && reserva.status === 'confirmado') { /* Permite */ } // Proprietário marca como concluida (opcional)
                  else {
                      return res.status(403).json({ 
                         errorMessage: "Apenas o proprietário pode confirmar/rejeitar. Estudantes só podem cancelar pendentes." // Mensagem mais descritiva
@@ -290,7 +229,7 @@ const reservasController = {
             }
 
              // Se o status for 'cancelada' por um estudante que não é o proprietário, verifica se é o dono da reserva e se o status é 'pendente'
-            if (status === 'cancelada' && reserva.user_id === userId && reserva.alojamento.proprietario_id !== userId && reserva.status !== 'pendente') {
+            if (status === 'cancelado' && reserva.user_id === userId && reserva.alojamento.proprietario_id !== userId && reserva.status !== 'pendente') {
                  return res.status(403).json({ 
                     errorMessage: "Apenas pode cancelar reservas pendentes." 
                 });
@@ -314,7 +253,7 @@ const reservasController = {
     },
 
     // Atualizar status de pagamento (PATCH)
-    updatePagamentoStatus: async (req, res) => {
+    updatePagamento: async (req, res) => {
         try {
             const { id } = req.params; // id da reserva
             const userId = req.user.id;
@@ -384,23 +323,20 @@ const reservasController = {
                     errorMessage: "Reservation not found." 
                 });
             }
-
             // Verifica se o user é o dono da reserva
             if (reserva.user_id !== userId) {
                  return res.status(403).json({ 
                     errorMessage: "Não tem permissão para cancelar esta reserva." // Ou "Apenas pode cancelar as suas próprias reservas."
                  });
             }
-
-            // Verifica se o status permite cancelamento pelo estudante
-            if (reserva.status !== 'pendente') {
-                 return res.status(400).json({ 
+            // Verifica se o estado permite cancelamento pelo estudante
+            if (reserva.estado !== 'pendente') {
+                return res.status(400).json({ 
                     errorMessage: "Apenas pode cancelar reservas pendentes." 
-                 });
+                });
             }
-
-            // Atualiza o status para cancelada
-            await reserva.update({ status: 'cancelada' });
+            // Atualiza o estado para cancelada
+            await reserva.update({ estado: 'cancelada' });
 
             return res.status(200).json({ 
                 message: "Reserva cancelada com sucesso." 
@@ -413,16 +349,6 @@ const reservasController = {
             });
         }
     },
-
-    // Rejeitar/Confirmar uma reserva (PATCH /reservas/{reservaID}/status com status no body) - PARA PROPRIETÁRIOS/ADMINS
-    // Esta lógica já está principalmente em updateReservaStatus, mas a rota DELETE na documentação sugere uma ação específica para cancelar.
-    // Se o DELETE /reservas/{reservaID} for APENAS para cancelamento pelo estudante, a lógica acima serve.
-    // Se o DELETE for para rejeição pelo proprietário, podemos ter uma rota PATCH /reservas/{reservaID}/reject para proprietários.
-    // Como a documentação tem DELETE com mensagens de cancelada/rejeitada, vamos ajustar updateReservaStatus para permitir rejeição pelo proprietário e talvez remover a rota DELETE específica se for redundante.
-    // A rota PATCH /:id/status já trata a mudança de status.
-    // A documentação para DELETE /reservas/{reservaID} tem JSON de sucesso para cancelada E rejeitada, o que é confuso para um DELETE.
-    // Vou manter a lógica principal de update de status no PATCH /reservas/{reservaID}/status e apenas garantir as mensagens.
-
 };
 
 module.exports = reservasController;

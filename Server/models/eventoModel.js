@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../../connection');
-const User = require('./userModel');
 
 const Evento = sequelize.define("Evento", {
     id: {
@@ -39,6 +38,11 @@ const Evento = sequelize.define("Evento", {
             model: 'Users',
             key: 'id'
         }
+    },
+    status: {
+        type: DataTypes.ENUM('agendado', 'concluido', 'cancelado'),
+        defaultValue: 'agendado',
+        allowNull: false
     }
 }, {
     timestamps: true,
